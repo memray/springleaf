@@ -109,3 +109,10 @@ rm(f)
 cat("summmary on factor variables")
 train.factor <- subset(train, select = factor.names)
 summary(train.factor)
+
+library(mice)
+cat("calculate percentile of missing data\n")
+pMiss <- function(x){sum(is.na(x))/length(x)*100}
+missing <- apply(train,2,pMiss)
+
+temp.train <- mice(train,m=5,maxit=5,meth='pmm',seed=500)
