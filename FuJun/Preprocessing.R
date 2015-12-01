@@ -19,15 +19,18 @@ train <- subset(train, select=!duplicated(as.list(train)))
 test <- subset(test, select=colnames(train))
 
 cat("remove constant\n")
+## col.const <- sapply(train, function(x) length(unique(x)[!is.na(unique(x))]))
 col.const <- sapply(train, function(x) length(unique(x))==1)
 table(col.const)
 train <- subset(train, select = !col.const)
 test <- subset(test, select = !col.const)
 rm(col.const)
 
-cat("replace \"\" to NA\n")
+cat("replace \"\" and [] to NA\n")
 train[train==""] <- NA
 test[test==""] <- NA
+train[train=="[]"] <- NA
+test[test=="[]"] <- NA
 
 cat("coerce character to factor")
 feature.names <- names(train)
@@ -110,9 +113,27 @@ cat("summmary on factor variables")
 train.factor <- subset(train, select = factor.names)
 summary(train.factor)
 
+cat("imputation\n")
 library(mice)
 cat("calculate percentile of missing data\n")
 pMiss <- function(x){sum(is.na(x))/length(x)*100}
 missing <- apply(train,2,pMiss)
+## temp.train <- mice(train,m=5,maxit=5,meth='pmm',seed=500)
+temp.train <- mice(train,method='sample',seed=500)
+train <- complete(temp.train, 1)
 
-temp.train <- mice(train,m=5,maxit=5,meth='pmm',seed=500)
+cat("coerce time to weeks\n")
+coerce.weeks <- function(char) {
+      return (difftime(as.Date(format(as.POSIXct(char, format = "%d%b%y:%H:%M:%S"), "20%y-%m-%d")), 
+                       as.Date("2000-1-1"), units = "weeks"))
+}
+train$VAR_0075 <- sapply(train$VAR_0075, coerce.weeks)
+train$VAR_0204 <- sapply(train$VAR_0204, coerce.weeks)
+train$VAR_0217 <- sapply(train$VAR_0217, coerce.weeks)
+
+## missing value percentile on train.chars
+colMeans(is.na(train.chars))
+
+
+## separate numeric and non nonmeric columns
+## VAR_0241: zip code
