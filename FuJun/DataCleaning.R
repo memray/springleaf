@@ -77,6 +77,46 @@ rm(train.date, test.date)
 cat("replace missing values with -9999\n")
 train.num[is.na(train.num)] <- -9999
 test.num[is.na(test.num)]   <- -9999
+train.weeks[is.na(train.weeks)] <- -9999
+test.weeks[is.na(test.weeks)] <- -9999
+train.char[is.na(train.char)] <- -9999
+test.char[is.na(test.char)] <- -9999
 
+cat("feature selection by removing redudant features\n")
+set.seed(123)
+library(caret)
+correlationMatrix <- cor(train.num)
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.75)
+train.num.select <- train.num[, -highlyCorrelated]
+test.num.select <- test.num[, -highlyCorrelated]
+## train.char, train.weeks
 
+rm(x, y, z, tf, my_char, my_div, my_name, my_seq, my_sqrt, num_vect)
+## train.nonnumeric <- merge(train.weeks, train.char)
+y <- read.csv("y.csv")
 
+cat("entropy based feature selection on factor and time variables\n")
+temp.train <- cbind(train.weeks, train.char)
+temp.train <- cbind(temp.train, y)
+temp.train$target <- as.factor(temp.train$target)
+library(FSelector)
+weights <- symmetrical.uncertainty(target~., temp.train)
+print(weights)
+subset <- cutoff.k(weights, 32)
+## subset <- cutoff.biggest.diff(weights)
+## f <- as.simple.formula(subset, "target")
+temp.train <- subset(temp.train, select = subset)
+temp.train <- cbind(temp.train, train.num.select)
+temp.train <- cbind(temp.train, y)
+
+cat("megre temporary test files\n")
+final.names <- names(temp.train)[1:ncol(temp.train)-1]
+temp.test <- cbind(test.weeks, test.char)
+temp.test <- cbind(temp.test, test.num.select)
+temp.test <- subset(temp.test, select = final.names)
+
+write.csv(temp.train, "temp_train.csv", row.names = F)
+write.csv(temp.test, "temp_test.csv", row.names = F)
+
+rm(correlationMatrix, test, test.char, test.num, test.num.select, test.weeks, train, train.char, train.num, train.num.select, train.weeks,weights,y)
+rm(final.names, highlyCorrelated, subset)
