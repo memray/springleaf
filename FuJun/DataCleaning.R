@@ -74,6 +74,7 @@ rm(train.date, test.date)
 ## imbalanced: VAR_0008 VAR_0044 VAR_0202 VAR_0214 VAR_0216  VAR_0222
 ## imbalanced 2 : VAR_0226 VAR_0230 VAR_0236
 
+## can imputate missing values to 0 
 cat("replace missing values with -9999\n")
 train.num[is.na(train.num)] <- -9999
 test.num[is.na(test.num)]   <- -9999
