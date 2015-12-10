@@ -10,10 +10,20 @@ rm(path)
 
 cat("removing ID and target, store target into y\n")
 y <- train$target
+ID <- test$ID
 train <- subset(train, select=-c(ID,target))
 test <- subset(test, select=-ID)
 ## train <- train[,c(-1,-1934)]
 ## test <- test[, -1]
+
+cat("replace \"\" to NA\n")
+train[train==""] <- NA
+test[test==""] <- NA
+train[train=="[]"] <- NA
+test[test=="[]"] <- NA
+
+train[is.na(train)] <- 0
+test[is.na(test)] <- 0
 
 cat("remove constant\n")
 ## col.const <- sapply(train, function(x) length(unique(x)[!is.na(unique(x))]))
@@ -28,11 +38,10 @@ table(duplicated(as.list(train)))
 train <- subset(train, select=!duplicated(as.list(train)))
 test <- subset(test, select=colnames(train))
 
-cat("replace \"\" to NA\n")
-train[train==""] <- NA
-test[test==""] <- NA
-train[train=="[]"] <- NA
-test[test=="[]"] <- NA
+## missing value percentile 
+## apply(train, 2, function(col) sum(is.na(col))/length(col))
+## sapply(train, function(x) sum(is.na(x)))
+## mean(is.na(train))
 
 cat("separate numeric and non numeric columns\n")
 train.num <- train[, sapply(train, is.numeric)]
@@ -69,25 +78,35 @@ for (f in char.names) {
 rm(char.names, f, levels)
 rm(train.date, test.date)
 
+saveRDS(train.char, "tran_char.rds")
+saveRDS(test.char, "test_char.rds")
+saveRDS(train.weeks, "train_weeks.rds")
+saveRDS(test.weeks, "test_weeks.rds")
+saveRDS(train.num, "train_num.rds")
+saveRDS(test.num, "test_num.rds")
+
+
+
+
 ## city: VAR_0200, Zip: VAR_0241
 ## could delte them 
 ## imbalanced: VAR_0008 VAR_0044 VAR_0202 VAR_0214 VAR_0216  VAR_0222
 ## imbalanced 2 : VAR_0226 VAR_0230 VAR_0236
 
 ## can imputate missing values to 0 
-cat("replace missing values with -9999\n")
-train.num[is.na(train.num)] <- -9999
-test.num[is.na(test.num)]   <- -9999
-train.weeks[is.na(train.weeks)] <- -9999
-test.weeks[is.na(test.weeks)] <- -9999
-train.char[is.na(train.char)] <- -9999
-test.char[is.na(test.char)] <- -9999
+## cat("replace missing values with -9999\n")
+## train.num[is.na(train.num)] <- -9999
+## test.num[is.na(test.num)]   <- -9999
+## train.weeks[is.na(train.weeks)] <- -9999
+## test.weeks[is.na(test.weeks)] <- -9999
+## train.char[is.na(train.char)] <- -9999
+## test.char[is.na(test.char)] <- -9999
 
 cat("feature selection by removing redudant features\n")
 set.seed(123)
 library(caret)
 correlationMatrix <- cor(train.num)
-highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.75)
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff = 0.75)
 train.num.select <- train.num[, -highlyCorrelated]
 test.num.select <- test.num[, -highlyCorrelated]
 ## train.char, train.weeks
