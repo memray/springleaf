@@ -11,17 +11,29 @@ rm(path)
 cat("removing ID and target, store target into y\n")
 y <- train$target
 ID <- test$ID
+y <- as.data.frame(y)
+ID <- as.data.frame(ID)
+write.csv(y, "y.csv", row.names = F)
+write.csv(ID, "ID.csv", row.names = F)
 train <- subset(train, select=-c(ID,target))
 test <- subset(test, select=-ID)
 ## train <- train[,c(-1,-1934)]
 ## test <- test[, -1]
 
-cat("replace \"\" to NA\n")
+cat("replace \"\" and [] to NA\n")
 train[train==""] <- NA
 test[test==""] <- NA
 train[train=="[]"] <- NA
 test[test=="[]"] <- NA
 
+cat("check missing value percentile\n")
+mean(is.na(train)) ## overall missing value
+mean(is.na(test))
+apply(train, 2, function(x) sum(is.na(x))/length(x)) ## percentile of NA for each variable
+sapply(train, function(x) sum(is.na(x))) ## number of NA for each variable
+
+cat("imputation on missing value to zero")
+## NA represents a pattern that we don't know
 train[is.na(train)] <- 0
 test[is.na(test)] <- 0
 
@@ -35,13 +47,8 @@ rm(col.const)
 
 cat("remove duplicated columns\n")
 table(duplicated(as.list(train)))
-train <- subset(train, select=!duplicated(as.list(train)))
-test <- subset(test, select=colnames(train))
-
-## missing value percentile 
-## apply(train, 2, function(col) sum(is.na(col))/length(col))
-## sapply(train, function(x) sum(is.na(x)))
-## mean(is.na(train))
+train <- subset(train, select = !duplicated(as.list(train)))
+test <- subset(test, select = colnames(train))
 
 cat("separate numeric and non numeric columns\n")
 train.num <- train[, sapply(train, is.numeric)]
@@ -56,14 +63,16 @@ test.date <- subset(test.char, select = colnames(train.date))
 test.char <- test.char[, !colnames(test.char) %in% colnames(test.date)]
 
 cat("coerce time to weeks\n")
+## 2000-1-1 is the basic unit
 coerce.weeks <- function(char) {
       return (difftime(as.Date(format(as.POSIXct(char, format = "%d%b%y:%H:%M:%S"), "20%y-%m-%d")), 
                        as.Date("2000-1-1"), units = "weeks"))
 }
 train.weeks <- as.data.frame(lapply(train.date, coerce.weeks))
 test.weeks <- as.data.frame(lapply(test.date, coerce.weeks))
-train.weeks <- as.data.frame(lapply(train.weeks, as.numeric))
+train.weeks <- as.data.frame(lapply(train.weeks, as.numeric)) ## ingore decimal points
 test.weeks <- as.data.frame(lapply(test.weeks, as.numeric))
+rm(train.date, test.date)
 
 cat("coerce character variables to factor\n")
 ## train.char <- as.data.frame(lapply(train.char, as.factor))
@@ -76,7 +85,6 @@ for (f in char.names) {
             test.char[[f]]  <- as.integer(factor(test.char[[f]],  levels=levels))
 }
 rm(char.names, f, levels)
-rm(train.date, test.date)
 
 saveRDS(train.char, "tran_char.rds")
 saveRDS(test.char, "test_char.rds")
@@ -85,58 +93,18 @@ saveRDS(test.weeks, "test_weeks.rds")
 saveRDS(train.num, "train_num.rds")
 saveRDS(test.num, "test_num.rds")
 
+temp.train <- cbind(train.char, train.weeks)
+temp.train <- cbind(temp.train, y)
+temp.train <- cbind(train.num, temp.train)
+saveRDS(temp.train, "train_final.RDS")
+## write.csv(temp.train, "train_final.csv", row.names = F)
 
-
+temp.test <- cbind(test.char, test.weeks)
+temp.test <- cbind(test.num, temp.test)
+saveRDS(temp.test, "test_final.RDS")
+## write.csv(temp.test, "test_final.csv", row.names = F)
 
 ## city: VAR_0200, Zip: VAR_0241
 ## could delte them 
 ## imbalanced: VAR_0008 VAR_0044 VAR_0202 VAR_0214 VAR_0216  VAR_0222
 ## imbalanced 2 : VAR_0226 VAR_0230 VAR_0236
-
-## can imputate missing values to 0 
-## cat("replace missing values with -9999\n")
-## train.num[is.na(train.num)] <- -9999
-## test.num[is.na(test.num)]   <- -9999
-## train.weeks[is.na(train.weeks)] <- -9999
-## test.weeks[is.na(test.weeks)] <- -9999
-## train.char[is.na(train.char)] <- -9999
-## test.char[is.na(test.char)] <- -9999
-
-cat("feature selection by removing redudant features\n")
-set.seed(123)
-library(caret)
-correlationMatrix <- cor(train.num)
-highlyCorrelated <- findCorrelation(correlationMatrix, cutoff = 0.75)
-train.num.select <- train.num[, -highlyCorrelated]
-test.num.select <- test.num[, -highlyCorrelated]
-## train.char, train.weeks
-
-rm(x, y, z, tf, my_char, my_div, my_name, my_seq, my_sqrt, num_vect)
-## train.nonnumeric <- merge(train.weeks, train.char)
-y <- read.csv("y.csv")
-
-cat("entropy based feature selection on factor and time variables\n")
-temp.train <- cbind(train.weeks, train.char)
-temp.train <- cbind(temp.train, y)
-temp.train$target <- as.factor(temp.train$target)
-library(FSelector)
-weights <- symmetrical.uncertainty(target~., temp.train)
-print(weights)
-subset <- cutoff.k(weights, 32)
-## subset <- cutoff.biggest.diff(weights)
-## f <- as.simple.formula(subset, "target")
-temp.train <- subset(temp.train, select = subset)
-temp.train <- cbind(temp.train, train.num.select)
-temp.train <- cbind(temp.train, y)
-
-cat("megre temporary test files\n")
-final.names <- names(temp.train)[1:ncol(temp.train)-1]
-temp.test <- cbind(test.weeks, test.char)
-temp.test <- cbind(temp.test, test.num.select)
-temp.test <- subset(temp.test, select = final.names)
-
-write.csv(temp.train, "temp_train.csv", row.names = F)
-write.csv(temp.test, "temp_test.csv", row.names = F)
-
-rm(correlationMatrix, test, test.char, test.num, test.num.select, test.weeks, train, train.char, train.num, train.num.select, train.weeks,weights,y)
-rm(final.names, highlyCorrelated, subset)

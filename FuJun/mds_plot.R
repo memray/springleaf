@@ -1,27 +1,20 @@
 setwd("~/Desktop/DataMining")
-library(caret)
+## setwd("~/Dropbox/DM/DataOnFeatureSelect")
+## library(caret)
+## correlationMatrix <- readRDS("corrMatrix.rds")
+## highlyCorrelated.75 <- findCorrelation(correlationMatrix, cutoff = 0.75)
+## train.num.select75 <- train.num[, -highlyCorrelated.75]
 
 train.num <- readRDS("train_num.rds")
-train.weeks <- readRDS("train_weeks.rds")
-train.char <- readRDS("train_char.rds")
-correlationMatrix <- readRDS("corrMatrix.rds")
-
-## read test data 
-test.num <- readRDS("test_num.rds")
-test.weeks <- readRDS("test_weeks.rds")
-test.char <- readRDS("test_char.rds")
-
 y <- read.csv("y.csv", header = T) ## column name: target
 y$target <- as.factor(y$target)
 
-highlyCorrelated.75 <- findCorrelation(correlationMatrix, cutoff = 0.75)
-train.num.select75 <- train.num[, -highlyCorrelated.75]
-
-hold <- sample(1:nrow(train.num.select75), 5000)
+set.seed(123)
+hold <- sample(1:nrow(train.num), 5000)
 samp.y <- y[hold, ]
 samp.y <- as.data.frame(samp.y)
 colnames(samp.y) <- c("target")
-samp <- train.num.select75[hold, ]
+samp <- train.num[hold, ]
 
 samp.dist <- dist(samp)
 samp.mds <- cmdscale(samp.dist)
