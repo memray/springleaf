@@ -1,5 +1,8 @@
 library(xgboost)
 library(readr)
+library(DiagrammeR)
+
+set.seed(123)
 setwd("~/Desktop/DataMining")
 
 cat("reading data, including train and test\n")
@@ -67,3 +70,10 @@ xgboost.simp <- xgb.load("xgboost_simp.model")
 
 xgb.save(clf.simp, "xgboost_adv.model")
 xgboost.adv <- xgb.load("xgboost_adv.model")
+
+
+xgb.plot.tree(feature_names = name, model = clf.adv, n_first_tree = 2, width = 9000, height = 10000)
+
+importance_matrix <- xgb.importance(name, model = clf.adv)
+library(Ckmeans.1d.dp)
+xgb.plot.importance(importance_matrix[1:10,])

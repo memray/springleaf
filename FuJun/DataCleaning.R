@@ -31,6 +31,7 @@ mean(is.na(train)) ## overall missing value
 mean(is.na(test))
 apply(train, 2, function(x) sum(is.na(x))/length(x)) ## percentile of NA for each variable
 sapply(train, function(x) sum(is.na(x))) ## number of NA for each variable
+missing <- apply(train, 2, function(x) sum(is.na(x))/length(x))
 
 cat("imputation on missing value to zero")
 ## NA represents a pattern that we don't know

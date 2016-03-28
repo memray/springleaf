@@ -1,7 +1,6 @@
-setwd("~/Desktop/DataMining")
+setwd("~/Dropbox/DM/DataOnFeatureSelect")
 
 train.num <- readRDS("train_num.rds")
-train.weeks <- readRDS("train_weeks.rds")
 train.char <- readRDS("train_char.rds")
 train.final <- readRDS("train_final.rds")
 
